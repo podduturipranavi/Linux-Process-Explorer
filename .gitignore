@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.pyc
+venv/
+backend/venv/
+.env
+
+# Node.js
+node_modules/
+frontend/node_modules/
+dist/
+
+# Compiled C program
+process_explorer
+
+# Editor and backup files
+*.save
