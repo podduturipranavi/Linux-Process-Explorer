@@ -230,71 +230,70 @@ function App() {
   // STATE CLASS
   // ==========================================================
 
-  const getStateClass = (state) => {
+   const getStateClass = (state) => {
     if (!state) {
       return "state-unknown";
     }
 
     return `state-${state.toLowerCase()}`;
   };
+  
 
+const isProcessStopped = (state) => {
+  const value = String(state || "")
+    .trim()
+    .toLowerCase();
+
+  return (
+    value === "t" ||
+    value === "t+" ||
+    value === "stopped" ||
+    value === "tracing stop" ||
+    value === "tracing-stop" ||
+    value.startsWith("stopped ") ||
+    value.includes("tracing stop")
+  );
+};
   // ==========================================================
-  // PROCESS ACTIONS
-  // ==========================================================
 
-  const processAction = async (
-    pid,
-    action
-  ) => {
-    let confirmed = true;
-
-    if (action === "terminate") {
-      confirmed = window.confirm(
+      const processAction = async (pid, action) => {
+    if (
+      action === "terminate" &&
+      !window.confirm(
         `Are you sure you want to terminate process ${pid}?`
-      );
-    }
-
-    if (!confirmed) {
+      )
+    ) {
       return;
     }
 
-    setActionLoading(
-      `${action}-${pid}`
-    );
-
+    setActionLoading(`${action}-${pid}`);
     setMessage("");
     setError("");
 
     try {
       const response = await fetch(
         `${API_URL}/api/processes/${pid}/${action}`,
-        {
-          method: "POST",
-        }
+        { method: "POST" }
       );
 
       const data = await response.json();
 
-      if (!response.ok) {
+      if (!response.ok || !data.success) {
         throw new Error(
-          data.message ||
-            "Process action failed."
+          data.message || "Process action failed."
         );
       }
 
       setMessage(data.message);
 
-      setTimeout(
-        fetchProcesses,
-        500
-      );
+      // Fetch the latest process state before updating the UI.
+      await fetchProcesses();
     } catch (err) {
-      setError(err.message);
+      setError(err.message || "Unable to perform process action.");
     } finally {
       setActionLoading(null);
     }
   };
-
   // ==========================================================
   // PROCESS TREE
   // ==========================================================
@@ -680,409 +679,192 @@ function App() {
   // ==========================================================
   // PROCESSES PAGE
   // ==========================================================
-
   const ProcessesPage = () => {
-    return (
-      <>
-        <div className="page-title">
-          <div>
-            <h2>Processes</h2>
+  return (
+  <>        
+  <div className="process-controls">
+    <div className="search-box">
+      <span>🔍</span>
+      <input
+        type="text"
+        placeholder="Search by PID, process name, or state..."
+        value={searchInput}
+        onChange={(e) => setSearchInput(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") handleSearch();
+        }}
+      />
 
-            <p>
-              Monitor and manage running
-              Linux processes
-            </p>
-          </div>
+      {searchInput && (
+        <button
+          className="clear-search"
+          onClick={clearSearch}
+          title="Clear search"
+        >
+          ✕
+        </button>
+      )}
+    </div>
 
-          <div className="process-count">
-            {filteredProcesses.length}
-            {" "}of{" "}
-            {processes.length}
-            {" "}processes
-          </div>
-        </div>
+    <button className="refresh-button" onClick={handleSearch}>
+      🔍 Search
+    </button>
 
-        <section className="process-controls">
+    <button className="refresh-button" onClick={fetchProcesses}>
+      ↻ Refresh
+    </button>
 
-          {/* SEARCH BOX */}
+    <button
+      className="auto-button"
+      onClick={() => setAutoRefresh(!autoRefresh)}
+    >
+      {autoRefresh ? "Auto: ON" : "Auto: OFF"}
+    </button>
 
-          <div className="search-box">
-            <span>🔍</span>
+    <select
+      className="interval-select"
+      value={refreshInterval}
+      onChange={(e) => setRefreshInterval(Number(e.target.value))}
+    >
+      <option value={1}>1 second</option>
+      <option value={3}>3 seconds</option>
+      <option value={5}>5 seconds</option>
+      <option value={10}>10 seconds</option>
+    </select>
+  </div>
 
-            <input
-              type="text"
-              placeholder="Search PID, process, description or state..."
-              value={searchInput}
-              onChange={(event) =>
-                setSearchInput(
-                  event.target.value
-                )
-              }
-              onKeyDown={(event) => {
-                if (
-                  event.key === "Enter"
-                ) {
-                  handleSearch();
-                }
-              }}
-            />
+  {message && <div className="success-message">{message}</div>}
+  {error && <div className="error-message">{error}</div>}
 
-            {searchInput && (
-              <button
-                className="clear-search"
-                onClick={clearSearch}
+  <section className="process-section">
+    <div className="table-wrapper">
+      <table className="process-table">
+        <thead>
+          <tr>
+            <th onClick={() => handleSort("pid")}>
+              PID <SortArrow field="pid" />
+            </th>
+            <th onClick={() => handleSort("name")}>
+              Process Name <SortArrow field="name" />
+            </th>
+            <th onClick={() => handleSort("username")}>
+              User <SortArrow field="username" />
+            </th>
+            <th onClick={() => handleSort("state")}>
+              State <SortArrow field="state" />
+            </th>
+            <th onClick={() => handleSort("cpu_percent")}>
+              CPU % <SortArrow field="cpu_percent" />
+            </th>
+            <th onClick={() => handleSort("memory_mb")}>
+              Memory (MB) <SortArrow field="memory_mb" />
+            </th>
+            <th>Actions</th>
+           <th>Uptime</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {filteredProcesses.length > 0 ? (
+            filteredProcesses.map((process) => (
+              <tr
+                key={process.pid}
+                onClick={() => setSelectedProcess(process)}
               >
-                ✕
-              </button>
-            )}
-          </div>
+                <td>{process.pid}</td>
 
-          {/* SEARCH FIRST */}
-
-          <button
-            className="search-button"
-            onClick={handleSearch}
-          >
-            🔍 Search
-          </button>
-
-          {/* REFRESH SECOND */}
-
-          <button
-            className="refresh-button"
-            onClick={fetchProcesses}
-            disabled={loading}
-          >
-            {loading
-              ? "⟳ Refreshing..."
-              : "↻ Refresh"}
-          </button>
-
-          {/* AUTO REFRESH */}
-
-          <button
-            className={
-              `auto-button ${
-                autoRefresh
-                  ? "auto-active"
-                  : ""
-              }`
-            }
-            onClick={() =>
-              setAutoRefresh(
-                !autoRefresh
-              )
-            }
-          >
-            {autoRefresh
-              ? "Auto: ON"
-              : "Auto: OFF"}
-          </button>
-
-          {autoRefresh && (
-            <select
-              className="interval-select"
-              value={refreshInterval}
-              onChange={(event) =>
-                setRefreshInterval(
-                  Number(
-                    event.target.value
-                  )
-                )
-              }
-            >
-              <option value="1">
-                1 sec
-              </option>
-
-              <option value="3">
-                3 sec
-              </option>
-
-              <option value="5">
-                5 sec
-              </option>
-
-              <option value="10">
-                10 sec
-              </option>
-            </select>
-          )}
-        </section>
-
-        {search && (
-          <div className="active-search">
-            Showing results for:
-            <strong>
-              {" "}
-              "{search}"
-            </strong>
-
-            <button
-              onClick={clearSearch}
-            >
-              Clear
-            </button>
-          </div>
-        )}
-
-        <section className="process-section">
-          <div className="table-container">
-            <table>
-              <thead>
-                <tr>
-                  <th
-                    onClick={() =>
-                      handleSort("pid")
-                    }
-                  >
-                    PID
-                    <SortArrow field="pid" />
-                  </th>
-
-                  <th
-                    onClick={() =>
-                      handleSort("ppid")
-                    }
-                  >
-                    PPID
-                    <SortArrow field="ppid" />
-                  </th>
-
-                  <th
-                    onClick={() =>
-                      handleSort("name")
-                    }
-                  >
-                    PROCESS
-                    <SortArrow field="name" />
-                  </th>
-
-                  <th>
-                    DESCRIPTION
-                  </th>
-
-                  <th
-                    onClick={() =>
-                      handleSort("state")
-                    }
-                  >
-                    STATE
-                    <SortArrow field="state" />
-                  </th>
-
-                  <th
-                    onClick={() =>
-                      handleSort("cpu_percent")
-                    }
-                  >
-                    CPU
-                    <SortArrow field="cpu_percent" />
-                  </th>
-
-                  <th
-                    onClick={() =>
-                      handleSort("memory_mb")
-                    }
-                  >
-                    MEMORY
-                    <SortArrow field="memory_mb" />
-                  </th>
-
-                  <th>
-                    UPTIME
-                  </th>
-
-                  <th>
-                    ACTIONS
-                  </th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {filteredProcesses.length > 0
-                  ? filteredProcesses.map(
-                      (process) => (
-                        <tr
-                          key={process.pid}
-                        >
-                          <td>
-                            <button
-                              className="pid-button"
-                              onClick={() =>
-                                setSelectedProcess(
-                                  process
-                                )
-                              }
-                            >
-                              {process.pid}
-                            </button>
-                          </td>
-
-                          <td className="ppid">
-                            {process.ppid}
-                          </td>
-
-                          <td>
-                            <div className="process-cell">
-                              <div className="process-icon">
-                                ⚙
-                              </div>
-
-                              <span className="process-name">
-                                {process.name}
-                              </span>
-                            </div>
-                          </td>
-
-                          <td className="description">
-                            {process.description}
-                          </td>
-
-                          <td>
-                            <span
-                              className={
-                                `state-badge ${
-                                  getStateClass(
-                                    process.state
-                                  )
-                                }`
-                              }
-                            >
-                              <span className="state-dot"></span>
-                              {process.state}
-                            </span>
-                          </td>
-
-                          <td>
-                            <div className="usage-cell">
-                              <strong>
-                                {Number(
-                                  process.cpu_percent
-                                ).toFixed(1)}
-                                %
-                              </strong>
-
-                              <div className="mini-progress">
-                                <div
-                                  className="mini-progress-fill"
-                                  style={{
-                                    width:
-                                      `${Math.min(
-                                        process.cpu_percent,
-                                        100
-                                      )}%`,
-                                  }}
-                                />
-                              </div>
-                            </div>
-                          </td>
-
-                          <td>
-                            <div className="memory-cell">
-                              <strong>
-                                {Number(
-                                  process.memory_mb
-                                ).toFixed(1)}
-                                {" MB"}
-                              </strong>
-
-                              <span>
-                                {Number(
-                                  process.memory_percent
-                                ).toFixed(2)}
-                                %
-                              </span>
-                            </div>
-                          </td>
-
-                          <td className="uptime">
-                            {process.uptime}
-                          </td>
-
-                          <td>
-                            <div className="action-buttons">
-                              <button
-                                className="action-stop"
-                                title="Stop process"
-                                disabled={
-                                  actionLoading ===
-                                  `stop-${process.pid}`
-                                }
-                                onClick={() =>
-                                  processAction(
-                                    process.pid,
-                                    "stop"
-                                  )
-                                }
-                              >
-                                ⏸
-                              </button>
-
-                              <button
-                                className="action-resume"
-                                title="Resume process"
-                                disabled={
-                                  actionLoading ===
-                                  `resume-${process.pid}`
-                                }
-                                onClick={() =>
-                                  processAction(
-                                    process.pid,
-                                    "resume"
-                                  )
-                                }
-                              >
-                                ▶
-                              </button>
-
-                              <button
-                                className="action-terminate"
-                                title="Terminate process"
-                                disabled={
-                                  actionLoading ===
-                                  `terminate-${process.pid}`
-                                }
-                                onClick={() =>
-                                  processAction(
-                                    process.pid,
-                                    "terminate"
-                                  )
-                                }
-                              >
-                                ✕
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      )
-                    )
-                  : (
-                    <tr>
-                      <td
-                        colSpan="9"
-                        className="no-processes"
-                      >
-                        <div>🔍</div>
-
-                        <h3>
-                          No processes found
-                        </h3>
-
-                        <p>
-                          Try a different
-                          search term.
-                        </p>
-                      </td>
-                    </tr>
+                <td>
+                  <strong>{process.name || "Unknown"}</strong>
+                  {process.description && (
+                    <div className="process-description">
+                      {process.description}
+                    </div>
                   )}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      </>
-    );
-  };
+                </td>
+
+                <td>{process.username || process.user || "Unknown"}</td>
+
+                <td>
+                  <span className={getStateClass(process.state)}>
+                    {process.state || "Unknown"}
+                  </span>
+                </td>
+
+                <td>{Number(process.cpu_percent || 0).toFixed(2)}%</td>
+
+                <td>{Number(process.memory_mb || 0).toFixed(2)}</td>
+
+
+                <td>              
+                  <div
+                    className="action-buttons"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {isProcessStopped(process.state) ? (
+                      <button
+                        type="button"
+                        className="action-resume"
+                        title="Resume process"
+                        disabled={
+                          actionLoading === "resume-"+process.pid
+                        }
+                        onClick={() =>
+                          processAction(process.pid, "resume")
+                        }
+                      >
+                        ▶ Resume
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="action-stop"
+                        title="Pause process"
+                        disabled={
+                          actionLoading === "stop-"+process.pid
+                        }
+                        onClick={() =>
+                          processAction(process.pid, "stop")
+                        }
+                      >
+                        ⏸ Pause
+                      </button>
+                    )}
+                                    <button
+                      type="button"
+                      className="action-terminate"
+                      title="Terminate process"
+                      disabled={
+                        actionLoading === "terminate-" + process.pid
+                      }
+                      onClick={() =>
+                        processAction(process.pid, "terminate")
+                      }
+                    >
+                      ✕ Terminate
+                    </button>
+                  </div>
+                </td>
+                <td className="uptime">
+                  {process.uptime || "—"}
+                </td>
+              </tr>
+            ))
+          ) : (
+            <tr>
+              <td colSpan={8} className="no-processes">
+                <div>🔍</div>
+                <h3>No processes found</h3>
+                <p>Try a different search term.</p>
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</>
+);
+};
 
   // ==========================================================
   // TREE PAGE

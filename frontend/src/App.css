@@ -1188,10 +1188,12 @@ tbody tr:hover {
 
 .action-buttons {
   display: flex;
-
-  gap: 4px;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  flex-wrap: nowrap;
+  min-width: max-content;
 }
-
 .action-buttons button {
   width: 27px;
 
@@ -2080,4 +2082,145 @@ footer span:first-child {
   cursor: pointer;
   font-weight: 600;
   margin-left: 5px;
+}
+
+.action-buttons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.action-buttons button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 7px 10px;
+  white-space: nowrap;
+  cursor: pointer;
+  border: none;
+  border-radius: 6px;
+  color: white;
+}
+
+.action-stop {
+  background-color: #d97706;
+}
+
+.action-resume {
+  background-color: #16a34a;
+}
+
+.action-terminate {
+  background-color: #dc2626;
+}
+
+.action-buttons button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+/* Keep process action buttons readable beside Memory */
+.action-buttons {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 190px;
+}
+
+.action-buttons button {
+  flex-shrink: 0;
+  white-space: nowrap;
+  padding: 8px 10px;
+  font-size: 12px;
+}
+
+.action-buttons .action-stop,
+.action-buttons .action-pause {
+  min-width: 76px;
+}
+
+.action-buttons .action-resume {
+  min-width: 82px;
+}
+
+.action-buttons .action-terminate {
+  min-width: 96px;
+}
+
+th:last-child,
+td:last-child {
+  white-space: nowrap;
+}
+/* Keep Actions buttons compact */
+.action-buttons {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: nowrap;
+  min-width: max-content;
+}
+
+.action-buttons button {
+  flex-shrink: 0;
+  white-space: nowrap;
+  padding: 6px 8px;
+  font-size: 12px;
+}
+
+/* Reduce excess spacing around the right-side columns */
+th,
+td {
+  padding-left: 12px;
+  padding-right: 12px;
+}
+
+th:nth-last-child(3),
+td:nth-last-child(3) {
+  white-space: nowrap;
+}
+
+/* Allow horizontal scrolling across the table */
+.table-container {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+table {
+  width: 100%;
+  min-width: 1050px;
+  border-collapse: collapse;
+}
+/* Process table horizontal scrolling */
+.table-wrapper {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.process-table {
+  width: 100%;
+  min-width: 1100px;
+  border-collapse: collapse;
+}
+
+.process-table th,
+.process-table td {
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+.action-buttons {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+
+.action-buttons button {
+  flex-shrink: 0;
 }
