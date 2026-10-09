@@ -9,6 +9,11 @@ import time
 app = Flask(__name__)
 CORS(app)
 
+PUBLIC_DEPLOYMENT = os.environ.get(
+    "PUBLIC_DEPLOYMENT", "false"
+).lower() == "true"app = Flask(__name__)
+CORS(app)
+
 
 # ============================================================
 # GLOBAL CPU HISTORY
@@ -799,6 +804,12 @@ def get_single_process(pid):
 )
 def stop_process(pid):
 
+    if PUBLIC_DEPLOYMENT:
+        return jsonify({
+            "success": False,
+            "message": "Process control is disabled on the public deployment"
+        }), 403
+
     try:
 
         os.kill(
@@ -847,6 +858,12 @@ def stop_process(pid):
 )
 def resume_process(pid):
 
+    if PUBLIC_DEPLOYMENT:
+        return jsonify({
+            "success": False,
+            "message": "Process control is disabled on the public deployment"
+        }), 403
+
     try:
 
         os.kill(
@@ -894,6 +911,12 @@ def resume_process(pid):
     methods=["POST"]
 )
 def terminate_process(pid):
+
+    if PUBLIC_DEPLOYMENT:
+        return jsonify({
+            "success": False,
+            "message": "Process control is disabled on the public deployment"
+        }), 403
 
     try:
 
