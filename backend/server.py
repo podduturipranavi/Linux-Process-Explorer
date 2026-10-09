@@ -11,7 +11,9 @@ CORS(app)
 
 PUBLIC_DEPLOYMENT = os.environ.get(
     "PUBLIC_DEPLOYMENT", "false"
-).lower() == "true"app = Flask(__name__)
+).lower() == "true"
+
+app = Flask(__name__)
 CORS(app)
 
 
